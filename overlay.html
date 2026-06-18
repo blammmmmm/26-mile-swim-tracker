@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>26 Mile Swim Tracker Overlay</title>
+  <style>
+    :root {
+      --panel-opacity: .78;
+      --scale: 1;
+      --accent: #20c8ff;
+      --paper: rgba(13, 18, 24, var(--panel-opacity));
+      --line: rgba(255,255,255,.78);
+      --shadow: 0 4px 18px rgba(0,0,0,.95), 0 1px 2px rgba(0,0,0,1);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      background: transparent;
+      overflow: hidden;
+      font-family: Impact, "Arial Black", system-ui, sans-serif;
+      color: white;
+    }
+
+    body {
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-start;
+      padding: 28px;
+    }
+
+    .tracker {
+      width: calc(560px * var(--scale));
+      height: calc(250px * var(--scale));
+      position: relative;
+      background:
+        radial-gradient(circle at 20% 10%, rgba(32,200,255,.14), transparent 34%),
+        linear-gradient(135deg, rgba(7,13,20,var(--panel-opacity)), rgba(4,7,12,var(--panel-opacity)));
+      border: 2px solid rgba(255,255,255,.72);
+      border-radius: 18px;
+      padding: calc(22px * var(--scale)) calc(24px * var(--scale));
+      box-shadow: 0 18px 38px rgba(0,0,0,.45);
+      overflow: hidden;
+      transform-origin: top left;
+    }
+
+    .tracker::before {
+      content: "";
+      position: absolute;
+      inset: 12px;
+      border: 1px dashed rgba(255,255,255,.18);
+      border-radius: 14px;
+      pointer-events: none;
+    }
+
+    .top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .title {
+      font-size: calc(22px * var(--scale));
+      letter-spacing: .06em;
+      line-height: 1;
+      text-shadow: var(--shadow);
+      transform: rotate(-1.2deg);
+    }
+
+    .live {
+      display: inline-flex;
+      align-items: center;
+      gap: calc(8px * var(--scale));
+      padding: calc(5px * var(--scale)) calc(12px * var(--scale));
+      border: 1px solid rgba(255,255,255,.6);
+      border-radius: 999px;
+      background: rgba(0,0,0,.38);
+      font-size: calc(16px * var(--scale));
+      letter-spacing: .06em;
+      text-shadow: var(--shadow);
+    }
+
+    .dot {
+      width: calc(11px * var(--scale));
+      height: calc(11px * var(--scale));
+      border-radius: 99px;
+      background: #ff3232;
+      box-shadow: 0 0 12px rgba(255,50,50,.9);
+    }
+
+    .main {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      margin-top: calc(22px * var(--scale));
+    }
+
+    .miles-wrap {
+      transform: rotate(-1deg);
+    }
+
+    .miles {
+      font-size: calc(94px * var(--scale));
+      line-height: .8;
+      letter-spacing: .015em;
+      text-shadow: var(--shadow);
+    }
+
+    .unit {
+      font-size: calc(28px * var(--scale));
+      color: var(--accent);
+      margin-left: calc(8px * var(--scale));
+      text-shadow: var(--shadow);
+    }
+
+    .sub {
+      color: var(--accent);
+      font-size: calc(29px * var(--scale));
+      letter-spacing: .08em;
+      margin-left: calc(18px * var(--scale));
+      margin-top: calc(8px * var(--scale));
+      text-shadow: var(--shadow);
+    }
+
+    .goal-note {
+      min-width: calc(128px * var(--scale));
+      background: rgba(247, 228, 187, .93);
+      color: #080808;
+      padding: calc(12px * var(--scale)) calc(14px * var(--scale));
+      border-radius: 3px;
+      transform: rotate(2deg);
+      box-shadow: 0 10px 22px rgba(0,0,0,.55);
+      text-align: center;
+      font-family: "Arial Black", Impact, sans-serif;
+    }
+
+    .goal-note .label {
+      font-size: calc(17px * var(--scale));
+      letter-spacing: .05em;
+    }
+
+    .goal-note .goal {
+      font-size: calc(38px * var(--scale));
+      line-height: .9;
+    }
+
+    .goal-note .mi {
+      font-size: calc(16px * var(--scale));
+    }
+
+    .bar-row {
+      position: relative;
+      z-index: 2;
+      margin-top: calc(14px * var(--scale));
+      display: flex;
+      align-items: center;
+      gap: calc(14px * var(--scale));
+    }
+
+    .bar {
+      flex: 1;
+      height: calc(26px * var(--scale));
+      border: 2px solid rgba(255,255,255,.85);
+      border-radius: 8px;
+      background: rgba(0,0,0,.32);
+      overflow: hidden;
+      box-shadow: inset 0 0 12px rgba(0,0,0,.65), 0 3px 12px rgba(0,0,0,.75);
+    }
+
+    .fill {
+      width: 0%;
+      height: 100%;
+      background: repeating-linear-gradient(-35deg, var(--accent) 0 10px, #0b93c8 10px 18px);
+      box-shadow: 0 0 18px rgba(32,200,255,.75);
+      transition: width .55s ease;
+    }
+
+    .percent {
+      min-width: calc(86px * var(--scale));
+      font-size: calc(30px * var(--scale));
+      color: white;
+      text-shadow: var(--shadow);
+      transform: rotate(-2deg);
+    }
+
+    .bottom {
+      position: relative;
+      z-index: 2;
+      margin-top: calc(12px * var(--scale));
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: calc(12px * var(--scale));
+      text-align: center;
+      text-shadow: var(--shadow);
+    }
+
+    .stat-value {
+      font-size: calc(28px * var(--scale));
+      line-height: 1;
+    }
+
+    .stat-label {
+      font-size: calc(13px * var(--scale));
+      color: rgba(255,255,255,.88);
+      letter-spacing: .08em;
+      margin-top: calc(3px * var(--scale));
+    }
+
+    .route {
+      position: absolute;
+      left: calc(24px * var(--scale));
+      right: calc(24px * var(--scale));
+      bottom: calc(53px * var(--scale));
+      height: calc(36px * var(--scale));
+      pointer-events: none;
+      opacity: .45;
+    }
+
+    .route svg { width: 100%; height: 100%; overflow: visible; }
+    .route path { fill: none; stroke: rgba(255,255,255,.65); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 7 7; }
+    .route circle { fill: var(--accent); stroke: white; stroke-width: 2; filter: drop-shadow(0 0 8px rgba(32,200,255,.9)); }
+
+    .status-break .dot { background: #ffbd2e; box-shadow: 0 0 12px rgba(255,189,46,.9); }
+    .status-break .live { color: #ffbd2e; }
+    .status-final .dot { background: #ff7a18; box-shadow: 0 0 12px rgba(255,122,24,.9); }
+    .status-final .live { color: #ff9a38; }
+    .status-complete .dot { background: #35ff69; box-shadow: 0 0 12px rgba(53,255,105,.9); }
+    .status-complete .live { color: #54ff7a; }
+  </style>
+</head>
+<body>
+  <div id="tracker" class="tracker">
+    <div class="top-row">
+      <div class="title" id="title">CLIFFY SWIM TRACKER</div>
+      <div class="live"><span class="dot"></span><span id="statusText">LIVE</span></div>
+    </div>
+
+    <div class="main">
+      <div class="miles-wrap">
+        <div><span class="miles" id="miles">0.00</span><span class="unit">MI</span></div>
+        <div class="sub" id="subtitle">SWAM SO FAR</div>
+      </div>
+      <div class="goal-note">
+        <div class="label">GOAL</div>
+        <div class="goal">26</div>
+        <div class="mi">MILES</div>
+      </div>
+    </div>
+
+    <div class="bar-row">
+      <div class="bar"><div class="fill" id="fill"></div></div>
+      <div class="percent" id="percent">0%</div>
+    </div>
+
+    <div class="route">
+      <svg viewBox="0 0 500 40" preserveAspectRatio="none">
+        <path d="M 5 28 C 80 5, 120 38, 185 18 S 310 10, 365 25 S 455 28, 495 8" />
+        <circle id="routeDot" cx="5" cy="28" r="5" />
+      </svg>
+    </div>
+
+    <div class="bottom">
+      <div><div class="stat-value" id="complete">0%</div><div class="stat-label">COMPLETE</div></div>
+      <div><div class="stat-value" id="remaining">26.00</div><div class="stat-label">MI TO GO</div></div>
+      <div><div class="stat-value">26.00</div><div class="stat-label">MI GOAL</div></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
+    import { database, TRACKER_PATH, TOTAL_MILES } from "./firebase-config.js";
+
+    const params = new URLSearchParams(location.search);
+    const localOpacity = params.get("opacity");
+    const localScale = params.get("scale");
+    if (localOpacity) document.documentElement.style.setProperty("--panel-opacity", String(Math.max(0, Math.min(1, Number(localOpacity)))));
+    if (localScale) document.documentElement.style.setProperty("--scale", String(Math.max(.5, Math.min(2, Number(localScale)))));
+
+    const trackerRef = ref(database, TRACKER_PATH);
+    const els = {
+      tracker: document.getElementById("tracker"),
+      miles: document.getElementById("miles"),
+      fill: document.getElementById("fill"),
+      percent: document.getElementById("percent"),
+      complete: document.getElementById("complete"),
+      remaining: document.getElementById("remaining"),
+      statusText: document.getElementById("statusText"),
+      routeDot: document.getElementById("routeDot"),
+      title: document.getElementById("title"),
+      subtitle: document.getElementById("subtitle"),
+    };
+
+    const defaults = {
+      miles: 0,
+      goal: TOTAL_MILES,
+      status: "LIVE",
+      panelOpacity: .78,
+      title: "CLIFFY SWIM TRACKER",
+      subtitle: "SWAM SO FAR"
+    };
+
+    function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
+
+    function render(data) {
+      const goal = Number(data.goal ?? TOTAL_MILES);
+      const miles = clamp(Number(data.miles ?? 0), 0, goal);
+      const pct = goal ? clamp((miles / goal) * 100, 0, 100) : 0;
+      const remaining = clamp(goal - miles, 0, goal);
+      const status = String(data.status || "LIVE").toUpperCase();
+      const opacity = localOpacity ? Number(localOpacity) : Number(data.panelOpacity ?? .78);
+
+      document.documentElement.style.setProperty("--panel-opacity", String(clamp(opacity, 0, 1)));
+      els.miles.textContent = miles.toFixed(2);
+      els.fill.style.width = `${pct}%`;
+      els.percent.textContent = `${Math.round(pct)}%`;
+      els.complete.textContent = `${Math.round(pct)}%`;
+      els.remaining.textContent = remaining.toFixed(2);
+      els.statusText.textContent = status;
+      els.title.textContent = data.title || defaults.title;
+      els.subtitle.textContent = data.subtitle || defaults.subtitle;
+      els.routeDot.setAttribute("cx", String(5 + (pct / 100) * 490));
+      els.routeDot.setAttribute("cy", String(28 - Math.sin((pct / 100) * Math.PI) * 18));
+
+      els.tracker.classList.remove("status-break", "status-final", "status-complete");
+      if (status.includes("BREAK")) els.tracker.classList.add("status-break");
+      if (status.includes("FINAL")) els.tracker.classList.add("status-final");
+      if (status.includes("COMPLETE")) els.tracker.classList.add("status-complete");
+    }
+
+    onValue(trackerRef, (snapshot) => {
+      if (!snapshot.exists()) {
+        set(trackerRef, defaults);
+        render(defaults);
+        return;
+      }
+      render({ ...defaults, ...snapshot.val() });
+    });
+  </script>
+</body>
+</html>
