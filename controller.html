@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cliffy Swim Tracker Controller</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@500;700;900&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #071018;
+      color: #f6f0e6;
+      font-family: Inter, system-ui, sans-serif;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    .panel {
+      width: min(720px, 100%);
+      border: 1px solid rgba(24,200,255,.34);
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+      border-radius: 22px;
+      padding: 28px;
+      box-shadow: 0 30px 80px rgba(0,0,0,.45);
+    }
+    h1 {
+      margin: 0 0 20px;
+      font-family: Bebas Neue, sans-serif;
+      letter-spacing: 1px;
+      font-size: 48px;
+    }
+    .grid { display: grid; gap: 16px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    label { font-size: 13px; opacity: .72; text-transform: uppercase; letter-spacing: .08em; }
+    input, select, textarea {
+      width: 100%;
+      margin-top: 8px;
+      padding: 14px 15px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(0,0,0,.35);
+      color: #fff;
+      font: inherit;
+      outline: none;
+    }
+    textarea { min-height: 82px; resize: vertical; }
+    .buttons { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 14px 12px;
+      background: #159bd0;
+      color: white;
+      font-weight: 900;
+      cursor: pointer;
+      font-size: 15px;
+    }
+    button.secondary { background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.16); }
+    button.danger { background: #9d2020; }
+    button.green { background: #147d35; }
+    .preview {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      margin: 18px 0;
+    }
+    .card {
+      background: rgba(0,0,0,.28);
+      border: 1px solid rgba(255,255,255,.1);
+      padding: 16px;
+      border-radius: 14px;
+    }
+    .card b { display: block; font-size: 30px; margin-top: 4px; }
+    .hint { opacity: .6; font-size: 13px; margin-top: 16px; line-height: 1.45; }
+  </style>
+</head>
+<body>
+  <main class="panel">
+    <h1>Cliffy Swim Tracker Control</h1>
+    <div class="preview">
+      <div class="card">Miles Swam <b id="previewMiles">0.00</b></div>
+      <div class="card">Complete <b id="previewPercent">0%</b></div>
+      <div class="card">To Go <b id="previewLeft">26.00</b></div>
+    </div>
+
+    <div class="grid">
+      <div class="row">
+        <label>Miles swam
+          <input id="miles" type="number" min="0" max="26" step="0.01" value="0">
+        </label>
+        <label>Status
+          <select id="status">
+            <option>LIVE</option>
+            <option>BREAK</option>
+            <option>FINAL MILE</option>
+            <option>COMPLETE</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="buttons">
+        <button data-add="0.25">+0.25</button>
+        <button data-add="0.5">+0.5</button>
+        <button data-add="1">+1</button>
+        <button data-add="-0.25" class="secondary">-0.25</button>
+        <button id="save" class="green">SAVE</button>
+      </div>
+
+      <div class="row">
+        <label>Elapsed seconds
+          <input id="elapsedSeconds" type="number" min="0" step="1" value="0">
+        </label>
+        <label>Day label
+          <input id="day" value="DAY 1">
+        </label>
+      </div>
+
+      <div class="row">
+        <label>Water temp
+          <input id="waterTemp" value="64°F">
+        </label>
+        <label>Waves
+          <input id="waves" value="2-4 FT">
+        </label>
+      </div>
+
+      <div class="row">
+        <label>Conditions
+          <input id="conditions" value="CHOPPY">
+        </label>
+        <label>HR avg
+          <input id="hrAvg" value="--">
+        </label>
+      </div>
+
+      <label>Quote
+        <input id="quote" value="“ONE STROKE AT A TIME.”">
+      </label>
+
+      <label>Sticky note hype text
+        <textarea id="hype">KEEP
+F*%#ING
+GOING.</textarea>
+      </label>
+
+      <button id="reset" class="danger">RESET TRACKER</button>
+    </div>
+
+    <p class="hint">Keep this page private. The OBS overlay reads from Firebase in real time. Once hosted, use overlay.html as the browser source and controller.html from your laptop/phone.</p>
+  </main>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js';
+    import { getDatabase, ref, onValue, set, update } from 'https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js';
+    import { firebaseConfig, TRACKER_PATH, TOTAL_MILES } from './firebase-config.js';
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const trackerRef = ref(db, TRACKER_PATH);
+
+    const ids = ['miles','status','elapsedSeconds','day','waterTemp','waves','conditions','hrAvg','quote','hype'];
+    const el = Object.fromEntries(ids.map(id => [id, document.getElementById(id)]));
+    const previewMiles = document.getElementById('previewMiles');
+    const previewPercent = document.getElementById('previewPercent');
+    const previewLeft = document.getElementById('previewLeft');
+
+    function clampMiles(value) {
+      return Math.min(Math.max(Number(value) || 0, 0), TOTAL_MILES);
+    }
+
+    function payload() {
+      return {
+        miles: clampMiles(el.miles.value),
+        status: el.status.value,
+        elapsedSeconds: Math.max(0, Number(el.elapsedSeconds.value) || 0),
+        day: el.day.value,
+        waterTemp: el.waterTemp.value,
+        waves: el.waves.value,
+        conditions: el.conditions.value,
+        hrAvg: el.hrAvg.value,
+        quote: el.quote.value,
+        hype: el.hype.value,
+        updatedAt: Date.now()
+      };
+    }
+
+    function updatePreview() {
+      const miles = clampMiles(el.miles.value);
+      const percent = Math.round((miles / TOTAL_MILES) * 100);
+      const left = Math.max(TOTAL_MILES - miles, 0);
+      previewMiles.textContent = miles.toFixed(2);
+      previewPercent.textContent = `${percent}%`;
+      previewLeft.textContent = left.toFixed(2);
+    }
+
+    function hydrate(data = {}) {
+      el.miles.value = data.miles ?? 0;
+      el.status.value = data.status ?? 'LIVE';
+      el.elapsedSeconds.value = data.elapsedSeconds ?? 0;
+      el.day.value = data.day ?? 'DAY 1';
+      el.waterTemp.value = data.waterTemp ?? '64°F';
+      el.waves.value = data.waves ?? '2-4 FT';
+      el.conditions.value = data.conditions ?? 'CHOPPY';
+      el.hrAvg.value = data.hrAvg ?? '--';
+      el.quote.value = data.quote ?? '“ONE STROKE AT A TIME.”';
+      el.hype.value = data.hype ?? 'KEEP\nF*%#ING\nGOING.';
+      updatePreview();
+    }
+
+    onValue(trackerRef, snapshot => hydrate(snapshot.val() || {}));
+
+    document.querySelectorAll('[data-add]').forEach(button => {
+      button.addEventListener('click', async () => {
+        el.miles.value = clampMiles(Number(el.miles.value) + Number(button.dataset.add)).toFixed(2);
+        updatePreview();
+        await update(trackerRef, payload());
+      });
+    });
+
+    ids.forEach(id => el[id].addEventListener('input', updatePreview));
+
+    document.getElementById('save').addEventListener('click', async () => set(trackerRef, payload()));
+
+    document.getElementById('reset').addEventListener('click', async () => {
+      await set(trackerRef, {
+        miles: 0,
+        status: 'LIVE',
+        elapsedSeconds: 0,
+        day: 'DAY 1',
+        waterTemp: '64°F',
+        waves: '2-4 FT',
+        conditions: 'CHOPPY',
+        hrAvg: '--',
+        quote: '“ONE STROKE AT A TIME.”',
+        hype: 'KEEP\nF*%#ING\nGOING.',
+        updatedAt: Date.now()
+      });
+    });
+  </script>
+</body>
+</html>
