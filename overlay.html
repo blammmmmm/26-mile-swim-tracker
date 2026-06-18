@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Swim Tracker Overlay</title>
+<style>
+  :root{
+    --panel-opacity:.86;
+    --accent:#34d9ff;
+    --w:920px;
+    --h:230px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:100%;height:100%;background:transparent;overflow:hidden;font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;color:white}
+  body{display:flex;align-items:center;justify-content:center;padding:28px}
+  .wrap{width:var(--w);height:var(--h);position:relative}
+  .card{
+    width:100%;height:100%;border-radius:44px;padding:38px 48px 34px;
+    background:linear-gradient(135deg, rgba(80,126,137,var(--panel-opacity)) 0%, rgba(62,67,73,var(--panel-opacity)) 48%, rgba(45,49,55,var(--panel-opacity)) 100%);
+    border:2px solid rgba(255,255,255,.18);
+    box-shadow:0 22px 70px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.18);
+    overflow:hidden;
+  }
+  .card:before{content:"";position:absolute;inset:0;border-radius:44px;background:radial-gradient(circle at 13% 18%, rgba(52,217,255,.32), transparent 34%);pointer-events:none}
+  .top{display:flex;align-items:center;justify-content:space-between;position:relative;z-index:2}
+  .brand{display:flex;align-items:center;gap:18px}
+  .icon{width:58px;height:58px;border-radius:22px;border:1.5px solid rgba(52,217,255,.65);display:grid;place-items:center;box-shadow:0 0 34px rgba(52,217,255,.18)}
+  .icon svg{width:34px;height:34px;filter:drop-shadow(0 0 12px rgba(52,217,255,.35))}
+  .title{font-weight:900;font-size:38px;letter-spacing:.02em;text-shadow:0 4px 18px rgba(0,0,0,.45)}
+  .live{display:flex;align-items:center;gap:12px;padding:12px 22px;border-radius:999px;background:rgba(255,255,255,.13);border:1.5px solid rgba(255,255,255,.18);box-shadow:inset 0 1px 0 rgba(255,255,255,.18)}
+  .dot{width:20px;height:20px;border-radius:99px;background:#ff4d5a;box-shadow:0 0 0 11px rgba(255,77,90,.14), 0 0 18px rgba(255,77,90,.65)}
+  .live span{font-size:23px;font-weight:900;letter-spacing:.02em;text-shadow:0 2px 10px rgba(0,0,0,.4)}
+  .mid{margin-top:26px;display:flex;align-items:flex-end;justify-content:space-between;gap:34px;position:relative;z-index:2}
+  .label{font-size:18px;letter-spacing:.34em;font-weight:900;color:rgba(255,255,255,.74);text-shadow:0 4px 16px rgba(0,0,0,.45)}
+  .main{line-height:.9;margin-top:12px;font-weight:950;font-size:76px;letter-spacing:-.055em;text-shadow:0 7px 24px rgba(0,0,0,.52)}
+  .main .unit{font-size:.46em;letter-spacing:-.03em;color:var(--accent);margin-left:10px;text-shadow:0 0 22px rgba(52,217,255,.28)}
+  .remaining{text-align:right;min-width:240px;margin-bottom:6px}
+  .remNum{font-size:34px;font-weight:950;letter-spacing:-.035em;text-shadow:0 5px 18px rgba(0,0,0,.45)}
+  .remNum span{color:var(--accent)}
+  .remText{margin-top:5px;font-size:15px;font-weight:900;letter-spacing:.22em;color:rgba(255,255,255,.7);text-shadow:0 4px 14px rgba(0,0,0,.45)}
+  .barRow{margin-top:14px;display:grid;grid-template-columns:1fr auto;align-items:center;gap:24px;position:relative;z-index:2}
+  .bar{height:18px;border-radius:999px;background:rgba(0,0,0,.36);box-shadow:inset 0 3px 8px rgba(0,0,0,.42), 0 1px 0 rgba(255,255,255,.08);overflow:hidden}
+  .fill{height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg, #24d8ff, #93f0ff);box-shadow:0 0 22px rgba(52,217,255,.55)}
+  .pct{font-size:28px;font-weight:950;color:var(--accent);min-width:74px;text-align:right;text-shadow:0 4px 18px rgba(0,0,0,.5)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <section class="card">
+    <div class="top">
+      <div class="brand">
+        <div class="icon" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none"><circle cx="32" cy="15" r="7" fill="#34d9ff"/><path d="M13 39c8-8 16-8 24 0 6 6 12 6 18 0" stroke="#34d9ff" stroke-width="5" stroke-linecap="round"/><path d="M12 50c8-6 16-6 24 0 7 5 13 5 20 0" stroke="#34d9ff" stroke-width="5" stroke-linecap="round" opacity=".9"/></svg></div>
+        <div class="title">SWIM TRACKER</div>
+      </div>
+      <div class="live"><div class="dot"></div><span>LIVE</span></div>
+    </div>
+    <div class="mid">
+      <div>
+        <div class="label">MILES SWAM</div>
+        <div class="main"><span id="swam">0.00</span><span class="unit">MI</span></div>
+      </div>
+      <div class="remaining">
+        <div class="remNum"><span id="left">26.00</span> MI</div>
+        <div class="remText">REMAINING</div>
+      </div>
+    </div>
+    <div class="barRow">
+      <div class="bar"><div class="fill" id="fill"></div></div>
+      <div class="pct" id="pct">0%</div>
+    </div>
+  </section>
+</div>
+<script>
+  const TOTAL_DEFAULT = 26;
+  const qs = new URLSearchParams(location.search);
+  const clamp = (n,min,max)=>Math.min(max,Math.max(min,n));
+  function getState(){
+    const saved = JSON.parse(localStorage.getItem('swimTrackerState') || '{}');
+    return {
+      total: Number(qs.get('total') ?? saved.total ?? TOTAL_DEFAULT),
+      swam: Number(qs.get('swam') ?? saved.swam ?? 0),
+      opacity: Number(qs.get('opacity') ?? saved.opacity ?? .86)
+    };
+  }
+  function render(){
+    const state = getState();
+    const total = Math.max(.01,state.total);
+    const swam = clamp(state.swam,0,total);
+    const left = Math.max(0,total-swam);
+    const pct = clamp((swam/total)*100,0,100);
+    document.documentElement.style.setProperty('--panel-opacity', clamp(state.opacity,.15,1));
+    document.getElementById('swam').textContent = swam.toFixed(2);
+    document.getElementById('left').textContent = left.toFixed(2);
+    document.getElementById('pct').textContent = Math.round(pct) + '%';
+    document.getElementById('fill').style.width = pct + '%';
+  }
+  render();
+  window.addEventListener('storage', render);
+  setInterval(render, 500);
+</script>
+</body>
+</html>
