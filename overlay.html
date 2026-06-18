@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>26 Mile Swim Tracker Overlay</title>
+<style>
+  :root {
+    --panel-opacity: 0.68;
+    --accent: #00d5ff;
+    --accent-soft: rgba(0, 213, 255, .22);
+    --white: rgba(255,255,255,.96);
+    --muted: rgba(255,255,255,.68);
+    --faint: rgba(255,255,255,.16);
+    --glass: rgba(12, 18, 28, var(--panel-opacity));
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Helvetica Neue", Arial, sans-serif;
+  }
+
+  body {
+    display: grid;
+    place-items: center;
+  }
+
+  .overlay {
+    width: 720px;
+    height: 270px;
+    padding: 18px;
+    transform-origin: center;
+  }
+
+  .card {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    border-radius: 30px;
+    background:
+      radial-gradient(circle at 20% 0%, rgba(0, 213, 255, .18), transparent 34%),
+      radial-gradient(circle at 90% 12%, rgba(255, 255, 255, .10), transparent 28%),
+      linear-gradient(145deg, rgba(23, 31, 43, var(--panel-opacity)), rgba(5, 9, 15, calc(var(--panel-opacity) + .1)));
+    border: 1px solid rgba(255,255,255,.22);
+    box-shadow:
+      0 28px 70px rgba(0,0,0,.50),
+      inset 0 1px 0 rgba(255,255,255,.26),
+      inset 0 -1px 0 rgba(255,255,255,.08);
+    backdrop-filter: blur(18px) saturate(1.25);
+    -webkit-backdrop-filter: blur(18px) saturate(1.25);
+    overflow: hidden;
+    color: white;
+  }
+
+  .card:before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(90deg, transparent, rgba(255,255,255,.08), transparent),
+      repeating-linear-gradient(135deg, rgba(255,255,255,.035) 0 1px, transparent 1px 18px);
+    opacity: .45;
+    pointer-events: none;
+  }
+
+  .content {
+    position: relative;
+    height: 100%;
+    padding: 22px 26px 20px;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    gap: 12px;
+  }
+
+  .top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .event {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+  }
+
+  .swim-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 13px;
+    display: grid;
+    place-items: center;
+    background: linear-gradient(180deg, rgba(0,213,255,.22), rgba(0,213,255,.08));
+    border: 1px solid rgba(0,213,255,.30);
+    box-shadow: 0 0 26px rgba(0,213,255,.13);
+  }
+
+  .swim-icon svg { width: 25px; height: 25px; filter: drop-shadow(0 3px 8px rgba(0,213,255,.35)); }
+
+  .title {
+    min-width: 0;
+  }
+  .title .label {
+    font-size: 18px;
+    line-height: 1;
+    letter-spacing: .055em;
+    font-weight: 760;
+    color: var(--white);
+    text-shadow: 0 3px 18px rgba(0,0,0,.85);
+    white-space: nowrap;
+  }
+  .title .sub {
+    margin-top: 5px;
+    font-size: 11px;
+    letter-spacing: .18em;
+    color: rgba(0,213,255,.92);
+    font-weight: 700;
+    text-transform: uppercase;
+    text-shadow: 0 2px 10px rgba(0,0,0,.85);
+  }
+
+  .status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 13px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,.20);
+    background: rgba(255,255,255,.09);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.16), 0 10px 22px rgba(0,0,0,.22);
+    font-size: 13px;
+    letter-spacing: .08em;
+    font-weight: 800;
+    color: var(--white);
+    text-shadow: 0 2px 8px rgba(0,0,0,.9);
+  }
+  .dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #ff4d55;
+    box-shadow: 0 0 0 5px rgba(255,77,85,.14), 0 0 16px rgba(255,77,85,.72);
+  }
+  .status.complete .dot { background: #34f06f; box-shadow: 0 0 0 5px rgba(52,240,111,.14), 0 0 16px rgba(52,240,111,.72); }
+  .status.break .dot { background: #ffd35c; box-shadow: 0 0 0 5px rgba(255,211,92,.14), 0 0 16px rgba(255,211,92,.72); }
+
+  .main {
+    display: grid;
+    grid-template-columns: 1fr 178px;
+    align-items: end;
+    gap: 24px;
+  }
+
+  .miles-wrap {
+    min-width: 0;
+  }
+  .miles-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    line-height: .82;
+  }
+  .miles {
+    font-size: 92px;
+    font-weight: 850;
+    letter-spacing: -.075em;
+    color: var(--white);
+    text-shadow:
+      0 3px 0 rgba(0,0,0,.34),
+      0 12px 30px rgba(0,0,0,.72),
+      0 0 28px rgba(0,213,255,.11);
+    font-variant-numeric: tabular-nums;
+  }
+  .mi {
+    font-size: 26px;
+    font-weight: 850;
+    color: var(--accent);
+    letter-spacing: -.02em;
+    text-shadow: 0 4px 18px rgba(0,0,0,.9), 0 0 18px rgba(0,213,255,.35);
+  }
+  .caption {
+    margin-top: 11px;
+    font-size: 14px;
+    letter-spacing: .32em;
+    color: rgba(255,255,255,.88);
+    font-weight: 800;
+    text-shadow: 0 3px 14px rgba(0,0,0,.9);
+  }
+
+  .goal-card {
+    align-self: stretch;
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    border-radius: 22px;
+    background: rgba(255,255,255,.075);
+    border: 1px solid rgba(255,255,255,.16);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.12);
+    padding: 14px;
+  }
+  .goal-card .small {
+    font-size: 11px;
+    font-weight: 850;
+    letter-spacing: .16em;
+    color: var(--muted);
+    text-transform: uppercase;
+    text-shadow: 0 2px 8px rgba(0,0,0,.75);
+  }
+  .goal-card .goal {
+    margin-top: 7px;
+    font-size: 40px;
+    line-height: .9;
+    font-weight: 860;
+    letter-spacing: -.05em;
+    color: var(--white);
+    text-shadow: 0 8px 26px rgba(0,0,0,.65);
+    font-variant-numeric: tabular-nums;
+  }
+  .goal-card .unit {
+    margin-top: 5px;
+    font-size: 12px;
+    letter-spacing: .16em;
+    font-weight: 800;
+    color: rgba(0,213,255,.9);
+    text-shadow: 0 2px 8px rgba(0,0,0,.8);
+  }
+
+  .bottom {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 18px;
+    align-items: end;
+  }
+  .progress-block { min-width: 0; }
+  .bar-shell {
+    height: 18px;
+    width: 100%;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,.20);
+    background: rgba(255,255,255,.08);
+    box-shadow: inset 0 3px 10px rgba(0,0,0,.35), 0 9px 22px rgba(0,0,0,.18);
+    overflow: hidden;
+  }
+  .bar-fill {
+    width: 0%;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, rgba(0,213,255,.65), rgba(84,226,255,.98), rgba(255,255,255,.82));
+    box-shadow: 0 0 26px rgba(0,213,255,.45), inset 0 1px 0 rgba(255,255,255,.45);
+    transition: width .45s cubic-bezier(.2,.8,.2,1);
+  }
+  .stats {
+    margin-top: 12px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 11px;
+  }
+  .stat {
+    min-width: 0;
+    padding: 10px 12px;
+    border-radius: 17px;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.105);
+  }
+  .stat .num {
+    font-size: 21px;
+    line-height: 1;
+    font-weight: 850;
+    color: var(--white);
+    text-shadow: 0 4px 13px rgba(0,0,0,.72);
+    font-variant-numeric: tabular-nums;
+  }
+  .stat:first-child .num { color: var(--accent); text-shadow: 0 4px 13px rgba(0,0,0,.72), 0 0 16px rgba(0,213,255,.25); }
+  .stat .txt {
+    margin-top: 5px;
+    font-size: 9px;
+    letter-spacing: .12em;
+    color: var(--muted);
+    font-weight: 780;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .quote {
+    width: 178px;
+    padding-bottom: 2px;
+    text-align: right;
+    font-size: 12px;
+    line-height: 1.25;
+    font-weight: 760;
+    letter-spacing: .02em;
+    color: rgba(255,255,255,.72);
+    text-shadow: 0 3px 10px rgba(0,0,0,.85);
+  }
+  .quote span { color: rgba(0,213,255,.94); }
+
+  @media (max-width: 620px) {
+    .overlay { width: 560px; height: 240px; padding: 12px; }
+    .content { padding: 18px; }
+    .miles { font-size: 72px; }
+    .main { grid-template-columns: 1fr 142px; }
+    .goal-card .goal { font-size: 32px; }
+    .quote { display: none; }
+    .bottom { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+  <div class="overlay" id="overlay">
+    <section class="card" id="card">
+      <div class="content">
+        <header class="top">
+          <div class="event">
+            <div class="swim-icon" aria-hidden="true">
+              <svg viewBox="0 0 64 64" fill="none">
+                <path d="M8 43c8-7 15-7 22 0s14 7 26 0" stroke="#54e2ff" stroke-width="5" stroke-linecap="round"/>
+                <path d="M13 30c8-4 16-7 26-3 7 3 12 3 17 0" stroke="#54e2ff" stroke-width="5" stroke-linecap="round" opacity=".78"/>
+                <circle cx="25" cy="18" r="6" fill="#54e2ff"/>
+              </svg>
+            </div>
+            <div class="title">
+              <div class="label" id="eventTitle">26 MILE SWIM</div>
+              <div class="sub" id="eventSub">Pacific Coast Tracker</div>
+            </div>
+          </div>
+          <div class="status" id="statusPill"><span class="dot"></span><span id="statusText">LIVE</span></div>
+        </header>
+
+        <main class="main">
+          <div class="miles-wrap">
+            <div class="miles-row"><div class="miles" id="miles">0.00</div><div class="mi">MI</div></div>
+            <div class="caption">SWAM SO FAR</div>
+          </div>
+          <aside class="goal-card">
+            <div class="small">Goal</div>
+            <div class="goal" id="goal">26.00</div>
+            <div class="unit">MILES</div>
+          </aside>
+        </main>
+
+        <footer class="bottom">
+          <div class="progress-block">
+            <div class="bar-shell"><div class="bar-fill" id="barFill"></div></div>
+            <div class="stats">
+              <div class="stat"><div class="num" id="percent">0%</div><div class="txt">Complete</div></div>
+              <div class="stat"><div class="num" id="remaining">26.00</div><div class="txt">Miles left</div></div>
+              <div class="stat"><div class="num" id="pace">--</div><div class="txt">Current pace</div></div>
+            </div>
+          </div>
+          <div class="quote" id="quote">One stroke at a time. <span>No quit.</span></div>
+        </footer>
+      </div>
+    </section>
+  </div>
+
+<script type="module">
+  import { database, TRACKER_PATH, TOTAL_MILES } from "./firebase-config.js";
+  import { ref, onValue, set, get } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
+
+  const qs = new URLSearchParams(location.search);
+  const overlay = document.getElementById('overlay');
+  const card = document.getElementById('card');
+
+  function clamp(n, min, max) { return Math.max(min, Math.min(max, Number(n) || 0)); }
+  function fmt(n, digits = 2) { return Number(n || 0).toFixed(digits); }
+
+  const scale = qs.get('scale');
+  if (scale) overlay.style.transform = `scale(${clamp(scale, .45, 1.6)})`;
+
+  const opacityOverride = qs.get('opacity');
+  if (opacityOverride) document.documentElement.style.setProperty('--panel-opacity', clamp(opacityOverride, .05, .95));
+
+  const trackerRef = ref(database, TRACKER_PATH);
+  const defaults = {
+    miles: 0,
+    goal: TOTAL_MILES,
+    status: 'LIVE',
+    opacity: 0.68,
+    title: '26 MILE SWIM',
+    subtitle: 'Pacific Coast Tracker',
+    pace: '--',
+    quote: 'One stroke at a time. No quit.'
+  };
+
+  get(trackerRef).then(snap => { if (!snap.exists()) set(trackerRef, defaults); });
+
+  onValue(trackerRef, (snap) => {
+    const data = { ...defaults, ...(snap.val() || {}) };
+    const goal = Number(data.goal || TOTAL_MILES);
+    const miles = clamp(data.miles, 0, goal);
+    const pct = goal ? clamp((miles / goal) * 100, 0, 100) : 0;
+    const remaining = Math.max(goal - miles, 0);
+    const status = String(data.status || 'LIVE').toUpperCase();
+
+    if (!opacityOverride) document.documentElement.style.setProperty('--panel-opacity', clamp(data.opacity ?? .68, .05, .95));
+    document.getElementById('eventTitle').textContent = data.title || defaults.title;
+    document.getElementById('eventSub').textContent = data.subtitle || defaults.subtitle;
+    document.getElementById('miles').textContent = fmt(miles);
+    document.getElementById('goal').textContent = fmt(goal);
+    document.getElementById('percent').textContent = `${Math.round(pct)}%`;
+    document.getElementById('remaining').textContent = fmt(remaining);
+    document.getElementById('pace').textContent = data.pace || '--';
+    document.getElementById('quote').innerHTML = String(data.quote || defaults.quote).replace(/No quit\.?/i, '<span>No quit.</span>');
+    document.getElementById('barFill').style.width = `${pct}%`;
+    document.getElementById('statusText').textContent = status;
+
+    const pill = document.getElementById('statusPill');
+    pill.className = 'status';
+    if (status.includes('BREAK')) pill.classList.add('break');
+    if (status.includes('COMPLETE') || pct >= 100) pill.classList.add('complete');
+  });
+</script>
+</body>
+</html>
