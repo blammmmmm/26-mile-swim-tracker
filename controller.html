@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Swim Tracker Control</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", sans-serif;
+      background: #0c1016;
+      color: #f7fbff;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    .panel {
+      width: min(520px, 100%);
+      background: #151b24;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 24px;
+      padding: 24px;
+      box-shadow: 0 24px 70px rgba(0,0,0,.45);
+    }
+    h1 { margin: 0 0 6px; font-size: 24px; }
+    p { color: rgba(255,255,255,.65); margin: 0 0 22px; }
+    label { display:block; margin: 18px 0 8px; font-weight: 800; color: rgba(255,255,255,.78); }
+    input, select {
+      width: 100%;
+      border: 1px solid rgba(255,255,255,.14);
+      background: #0d1219;
+      color: white;
+      border-radius: 14px;
+      padding: 14px 15px;
+      font-size: 16px;
+      outline: none;
+    }
+    .grid { display:grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-top: 12px; }
+    button {
+      border: 0;
+      border-radius: 14px;
+      padding: 13px 12px;
+      font-weight: 900;
+      font-size: 14px;
+      cursor: pointer;
+      color: white;
+      background: #263241;
+    }
+    button.primary { background: #0fbde8; color: #031018; }
+    button.red { background: #af2730; }
+    button.green { background: #19a55a; }
+    .row { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .small { font-size: 13px; color: rgba(255,255,255,.55); margin-top: 14px; }
+  </style>
+</head>
+<body>
+  <main class="panel">
+    <h1>Swim Tracker Control</h1>
+    <p>Private controller for the OBS overlay.</p>
+
+    <label>Event Title</label>
+    <input id="eventTitle" value="SWIM TRACKER">
+
+    <div class="row">
+      <div>
+        <label>Miles Swam</label>
+        <input id="miles" type="number" min="0" step="0.01" value="0">
+      </div>
+      <div>
+        <label>Goal Miles</label>
+        <input id="goal" type="number" min="1" step="0.01" value="26">
+      </div>
+    </div>
+
+    <div class="grid">
+      <button data-add=".25">+0.25</button>
+      <button data-add=".5">+0.5</button>
+      <button data-add="1">+1</button>
+      <button data-add="-.25">-0.25</button>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>Status</label>
+        <select id="status">
+          <option>LIVE</option>
+          <option>BREAK</option>
+          <option>FINAL MILE</option>
+          <option>COMPLETE</option>
+        </select>
+      </div>
+      <div>
+        <label>Pace</label>
+        <input id="pace" placeholder="ex: 1:42/100yd">
+      </div>
+    </div>
+
+    <label>Panel Opacity</label>
+    <input id="opacity" type="range" min="0.15" max="1" step="0.01" value="0.78">
+
+    <div class="grid" style="grid-template-columns: 1fr 1fr;">
+      <button class="primary" id="save">Save / Update</button>
+      <button class="red" id="reset">Reset Miles</button>
+    </div>
+
+    <p class="small">Recommended OBS Browser Source: 760 × 310. Use transparent background.</p>
+  </main>
+
+  <script type="module">
+    import { ref, get, set, update } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
+    import { database, TRACKER_PATH, TOTAL_MILES } from "./firebase-config.js";
+
+    const $ = (id) => document.getElementById(id);
+    const trackerRef = ref(database, TRACKER_PATH);
+
+    async function load() {
+      const snap = await get(trackerRef);
+      const data = snap.val() || {};
+      $("eventTitle").value = data.eventTitle || "SWIM TRACKER";
+      $("miles").value = data.miles ?? 0;
+      $("goal").value = data.goal ?? TOTAL_MILES;
+      $("status").value = data.status || "LIVE";
+      $("pace").value = data.pace || "";
+      $("opacity").value = data.opacity ?? .78;
+    }
+
+    function currentData() {
+      return {
+        eventTitle: $("eventTitle").value || "SWIM TRACKER",
+        miles: Math.max(0, Number($("miles").value || 0)),
+        goal: Math.max(1, Number($("goal").value || TOTAL_MILES)),
+        status: $("status").value || "LIVE",
+        pace: $("pace").value || "",
+        opacity: Number($("opacity").value)
+      };
+    }
+
+    $("save").addEventListener("click", () => set(trackerRef, currentData()));
+
+    $("reset").addEventListener("click", async () => {
+      $("miles").value = 0;
+      await set(trackerRef, currentData());
+    });
+
+    document.querySelectorAll("[data-add]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const delta = Number(btn.dataset.add);
+        $("miles").value = Math.max(0, Number($("miles").value || 0) + delta).toFixed(2);
+        await set(trackerRef, currentData());
+      });
+    });
+
+    $("opacity").addEventListener("input", () => update(trackerRef, { opacity: Number($("opacity").value) }));
+    load();
+  </script>
+</body>
+</html>
